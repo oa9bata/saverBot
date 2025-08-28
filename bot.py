@@ -252,7 +252,7 @@ async def handle_video_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_video(
                 chat_id=update.effective_chat.id,
                 video=video_file,
-                caption=f" يعلق فقط في التيك توك, لو حملته يروح التعليق + المشكله راح تنحل قريب✅ Downloaded from {platform.title()}\n🤖 @{BOT_USERNAME}",
+                caption=f" اذا قاعد يقطع فترا التقطيع فقط في التيلقرام, لو حملته لجوالك يروح التقطيع + المشكله راح تنحل قريب✅ Downloaded from {platform.title()}\n🤖 @{BOT_USERNAME}",
                 supports_streaming=True,
                 width=1280,
                 height=720,
