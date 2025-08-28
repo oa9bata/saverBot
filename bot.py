@@ -63,21 +63,32 @@ def download_video(url: str, platform: str) -> tuple[str, str]:
     temp_dir = tempfile.mkdtemp()
     output_path = os.path.join(temp_dir, "video.mp4")
     
-    # Force MP4 format with H.264 codec for better mobile compatibility
+    # Mobile-optimized settings
     base_opts = {
         'outtmpl': output_path,
         'quiet': True,
         'no_warnings': True,
         'extract_flat': False,
-        # Force specific format for mobile compatibility
-        'format': 'best[ext=mp4][vcodec^=avc1]/best[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
-        # Ensure we get MP4 container
+        # Force mobile-friendly format
+        'format': 'best[height<=720][ext=mp4]/best[ext=mp4][height<=720]/best[ext=mp4]/best',
         'merge_output_format': 'mp4',
-        # Prefer H.264 codec
+        # Force re-encode for mobile compatibility
+        'postprocessors': [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }],
         'postprocessor_args': [
-            '-c:v', 'copy',  # Copy video stream without re-encoding (fast)
-            '-c:a', 'copy',  # Copy audio stream without re-encoding (fast)
-            '-movflags', '+faststart'  # Enable fast start for streaming
+            '-c:v', 'libx264',     # Force H.264 encoding
+            '-preset', 'fast',     # Fast encoding
+            '-crf', '23',          # Good quality/size balance
+            '-maxrate', '2M',      # Limit bitrate for mobile
+            '-bufsize', '4M',      # Buffer size
+            '-c:a', 'aac',         # AAC audio for mobile
+            '-b:a', '128k',        # Audio bitrate
+            '-ar', '44100',        # Audio sample rate
+            '-movflags', '+faststart',  # Fast streaming start
+            '-profile:v', 'baseline',   # Mobile-compatible profile
+            '-level', '3.1'        # Mobile-compatible level
         ],
         'socket_timeout': 30,
         'retries': 3,
