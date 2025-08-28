@@ -60,65 +60,39 @@ def is_instagram_url(url: str) -> bool:
     return any(pattern in url.lower() for pattern in patterns)
 
 def download_video(url: str, platform: str) -> tuple[str, str]:
-    import subprocess
-    
     temp_dir = tempfile.mkdtemp()
-    raw_path = os.path.join(temp_dir, "raw_video")
     output_path = os.path.join(temp_dir, "video.mp4")
     
-    # Simple download first, then process
+    # Mobile-optimized settings
     base_opts = {
-        'outtmpl': raw_path,
+        'outtmpl': output_path,
         'quiet': True,
         'no_warnings': True,
-        'format': 'best[height<=720]/best',
+        'extract_flat': False,
+        # Force mobile-friendly format
+        'format': 'best[height<=720][ext=mp4]/best[ext=mp4][height<=720]/best[ext=mp4]/best',
+        'merge_output_format': 'mp4',
+        # Force re-encode for mobile compatibility
+        'postprocessors': [{
+            'key': 'FFmpegVideoConvertor',
+            'preferedformat': 'mp4',
+        }],
+        'postprocessor_args': [
+            '-c:v', 'libx264',     # Force H.264 encoding
+            '-preset', 'fast',     # Fast encoding
+            '-crf', '23',          # Good quality/size balance
+            '-maxrate', '2M',      # Limit bitrate for mobile
+            '-bufsize', '4M',      # Buffer size
+            '-c:a', 'aac',         # AAC audio for mobile
+            '-b:a', '128k',        # Audio bitrate
+            '-ar', '44100',        # Audio sample rate
+            '-movflags', '+faststart',  # Fast streaming start
+            '-profile:v', 'baseline',   # Mobile-compatible profile
+            '-level', '3.1'        # Mobile-compatible level
+        ],
         'socket_timeout': 30,
         'retries': 3,
     }
-    
-    # Download first
-    if platform == "tiktok":
-        try:
-            with yt_dlp.YoutubeDL(base_opts) as ydl:
-                ydl.download([url])
-        except Exception as e:
-            return None, f"Failed to download: {str(e)}"
-    else:  # Instagram  
-        try:
-            with yt_dlp.YoutubeDL(base_opts) as ydl:
-                ydl.download([url])
-        except Exception as e:
-            return None, "Failed to download Instagram video"
-    
-    # Find downloaded file
-    raw_file = None
-    for file in os.listdir(temp_dir):
-        if file.startswith('raw_video'):
-            raw_file = os.path.join(temp_dir, file)
-            break
-    
-    if not raw_file:
-        return None, "Download failed"
-    
-    # Force mobile-compatible encoding with FFmpeg
-    try:
-        subprocess.run([
-            'ffmpeg', '-i', raw_file, '-y',
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '28',
-            '-maxrate', '1500k', '-bufsize', '3000k',
-            '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',  # Even dimensions
-            '-c:a', 'aac', '-b:a', '96k', '-ar', '44100',
-            '-profile:v', 'baseline', '-level', '3.0',
-            '-movflags', '+faststart',
-            output_path
-        ], check=True, capture_output=True)
-        
-        # Clean up raw file
-        os.remove(raw_file)
-        return output_path, "Video"
-        
-    except subprocess.CalledProcessError:
-        return None, "Processing failed"
     
     if platform == "tiktok":
         tiktok_methods = [
