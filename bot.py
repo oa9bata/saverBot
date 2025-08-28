@@ -7,6 +7,40 @@ import concurrent.futures
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
+import json
+from datetime import datetime
+
+class UsageTracker:
+    def __init__(self, file_path="usage_data.json"):
+        self.file_path = file_path
+        
+    def get_current_month_key(self):
+        return datetime.now().strftime("%Y-%m")
+    
+    def load_data(self):
+        try:
+            with open(self.file_path, 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+    
+    def save_data(self, data):
+        with open(self.file_path, 'w') as f:
+            json.dump(data, f)
+    
+    def increment_usage(self):
+        data = self.load_data()
+        month_key = self.get_current_month_key()
+        data[month_key] = data.get(month_key, 0) + 1
+        self.save_data(data)
+    
+    def get_monthly_usage(self):
+        data = self.load_data()
+        month_key = self.get_current_month_key()
+        return data.get(month_key, 0)
+
+
+usage_tracker = UsageTracker()
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -141,8 +175,10 @@ def download_video(url: str, platform: str) -> tuple[str, str]:
     return None, "Failed to download video"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    monthly_usage = usage_tracker.get_monthly_usage()
     welcome_text = (
-        f"👋 Welcome to @{BOT_USERNAME}!\n\n"
+        f"👋 Welcome to @{BOT_USERNAME}!\n"
+        f"📊 Monthly downloads: {monthly_usage}\n\n"
         "📱 Send me a TikTok or Instagram video link and I'll download it without watermarks.\n\n"
         "🔗 Supported platforms:\n"
         "• TikTok\n"
@@ -213,6 +249,8 @@ async def handle_video_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 disable_notification=False
             )
         
+        usage_tracker.increment_usage()
+
         await processing_msg.delete()
         
         # Clean up
